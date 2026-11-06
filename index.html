@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>암산 테스트</title>
+<style>
+body{font-family:sans-serif;text-align:center;margin:0;padding:15vh 16px 0;color:#222}
+section{display:none}section.on{display:block}
+button{font-size:1.1rem;padding:8px 22px;cursor:pointer}
+input{font-size:1.6rem;width:7em;padding:4px 8px;text-align:right;border:2px solid #888;border-radius:4px}
+input.bad{border-color:#d33;animation:s .3s}
+@keyframes s{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+#q{font-size:1.8rem;margin:24px 0}
+#msg{height:1.4em;color:#d33;font-size:.9rem;margin-top:8px}
+#info{color:#666;margin-bottom:8px}
+</style></head><body>
+<section id="start" class="on"><h1>암산 테스트</h1><p>20문제를 최대한 빨리 풀어보세요.</p><button onclick="startGame()">시작</button></section>
+<section id="quiz"><div id="info"></div>
+<div id="q"><span id="expr"></span> = <input id="ans" inputmode="numeric" autocomplete="off"></div>
+<button onclick="submit()">확인</button><div id="msg"></div></section>
+<section id="result"><h1>완료!</h1><p>걸린 시간: <b id="time"></b></p><button onclick="show('start')">확인</button></section>
+<script>
+const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),pick=a=>a[R(0,a.length-1)];
+// 항(chunk): {s:식, v:값, n:숫자 개수}
+const N=m=>{const x=R(1,m);return{s:''+x,v:x,n:1}};
+const M=(ma,mb)=>{const a=R(2,ma),b=R(2,mb);return{s:a+' × '+b,v:a*b,n:2}};
+const D=(mb,mq)=>{const b=R(2,mb),q=R(2,Math.min(mq,Math.floor(999/b)));return{s:b*q+' ÷ '+b,v:q,n:2}};
+const P=(m)=>{ // (x±y) × c 또는 ÷ c
+  const x=R(2,m),y=R(2,m),add=Math.random()<.5,v=add?x+y:x-y;if(v<2)return null;
+  const s='('+x+(add?' + ':' − ')+y+')';
+  if(Math.random()<.5){const c=R(2,9);return{s:Math.random()<.5?s+' × '+c:c+' × '+s,v:v*c,n:3}}
+  const ds=[2,3,4,5,6,7,8,9].filter(d=>v%d==0&&v/d>=1);if(!ds.length)return null;
+  const d=pick(ds);return{s:s+' ÷ '+d,v:v/d,n:3};
+};
+const LV={ // 난이도별 후보 구조 (2-항 / 3-항 / 3~4항)
+ 0:[()=>[N(99),N(99)],()=>[N(99),N(99)],()=>[M(9,15)],()=>[D(9,12)]],
+ 1:[()=>[N(999),N(999),N(999)],()=>[M(9,99),N(999)],()=>[N(999),D(9,99)],()=>[P(30),N(99)],()=>[N(999),P(40)],()=>[M(9,30),N(999),N(99)]],
+ 2:[()=>[M(9,99),D(9,99),N(99)],()=>[P(99),N(999)],()=>[N(999),N(999),M(9,99)],()=>[N(999),P(99),N(99)],()=>[M(9,50),M(9,50)],()=>[N(999),D(9,99),N(999)]]
+};
+function makeProblem(lv){
+  for(;;){
+    const cs=pick(LV[lv])();if(cs.some(c=>!c))continue;
+    let v=cs[0].v,s=cs[0].s,ok=true;
+    for(let i=1;i<cs.length;i++){const add=Math.random()<.5;v+=add?cs[i].v:-cs[i].v;s+=(add?' + ':' − ')+cs[i].s;if(v<1)ok=false}
+    if(ok&&v<=99999&&cs.reduce((t,c)=>t+c.n,0)<=4)return{s,v};
+  }
+}
+let qs,i,t0,tm;
+const $=id=>document.getElementById(id);
+function show(id){document.querySelectorAll('section').forEach(e=>e.classList.toggle('on',e.id==id))}
+function fmt(ms){return(ms/1000).toFixed(1)+'초'}
+function startGame(){
+  qs=[...Array(10).fill(0),...Array(7).fill(1),...Array(3).fill(2)].map(makeProblem);i=0;
+  show('quiz');next();t0=performance.now();clearInterval(tm);tm=setInterval(tick,100);
+}
+function tick(){$('info').textContent=(i+1)+' / 20  ·  '+fmt(performance.now()-t0)}
+function next(){$('expr').textContent=qs[i].s;$('ans').value='';$('msg').textContent='';$('ans').classList.remove('bad');$('ans').focus();tick()}
+function submit(){
+  const a=$('ans');if(a.value.trim()==='')return;
+  if(Number(a.value)===qs[i].v){if(++i==20){clearInterval(tm);$('time').textContent=fmt(performance.now()-t0);show('result')}else next()}
+  else{a.classList.remove('bad');void a.offsetWidth;a.classList.add('bad');$('msg').textContent='틀렸어요. 다시 풀어보세요.';a.select()}
+}
+$('ans').addEventListener('keydown',e=>{if(e.key==='Enter')submit()});
+$('ans').addEventListener('input',()=>{$('ans').classList.remove('bad');$('msg').textContent=''});
+</script></body></html>
